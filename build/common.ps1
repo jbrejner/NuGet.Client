@@ -18,13 +18,13 @@ $NuGetCoreSln = Join-Path $NuGetClientRoot 'NuGet.Core.sln'
 $NuGetClientSln = Join-Path $NuGetClientRoot 'NuGet.Client.sln'
 
 $DotNetExe = Join-Path $CLIRoot 'dotnet.exe'
-$MSBuildExe = Join-Path ${env:ProgramFiles(x86)} 'MSBuild\14.0\Bin\msbuild.exe'
+$MSBuildRoot = Join-Path ${env:ProgramFiles(x86)} 'MSBuild\'
+$MSBuildExeRelPath = 'Bin\msbuild.exe'
 $NuGetExe = Join-Path $NuGetClientRoot '.nuget\nuget.exe'
 $XunitConsole = Join-Path $NuGetClientRoot 'packages\xunit.runner.console.2.1.0\tools\xunit.console.x86.exe'
 $ILMerge = Join-Path $NuGetClientRoot 'packages\ILMerge.2.14.1208\tools\ILMerge.exe'
 
 Set-Alias dotnet $DotNetExe
-Set-Alias msbuild $MSBuildExe
 Set-Alias nuget $NuGetExe
 Set-Alias xunit $XunitConsole
 Set-Alias ilmerge $ILMerge
@@ -244,7 +244,7 @@ Function Restore-SolutionPackages{
     param(
         [Alias('path')]
         [string]$SolutionPath,
-        [ValidateSet(4, 12, 14)]
+        [ValidateSet(4, 12, 14, 15)]
         [int]$MSBuildVersion
     )
     $opts = , 'restore'
@@ -431,6 +431,7 @@ Function Build-ClientsProjects {
         [string]$Configuration = $DefaultConfiguration,
         [string]$ReleaseLabel = $DefaultReleaseLabel,
         [int]$BuildNumber = (Get-BuildNumber),
+		[string]$MSBuildVersion,
         [switch]$SkipRestore,
         [switch]$Fast
     )
@@ -438,7 +439,7 @@ Function Build-ClientsProjects {
     $solutionPath = Join-Path $NuGetClientRoot NuGet.Clients.sln
     if (-not $SkipRestore) {
         # Restore packages for NuGet.Tooling solution
-        Restore-SolutionPackages -path $solutionPath -MSBuildVersion 14
+        Restore-SolutionPackages -path $solutionPath -MSBuildVersion $MSBuildVersion
     }
 
     # Build the solution
@@ -448,6 +449,9 @@ Function Build-ClientsProjects {
         $opts += '/verbosity:minimal'
     }
 
+	$MSBuildExe = Join-Path $MSBuildRoot ($MSBuildVersion + ".0")
+	$MSBuildExe = Join-Path $MSBuildExe $MSBuildExeRelPath
+	
     Trace-Log "$MSBuildExe $opts"
     & $MSBuildExe $opts
     if (-not $?) {
@@ -458,7 +462,9 @@ Function Build-ClientsProjects {
 Function Test-ClientsProjects {
     [CmdletBinding()]
     param(
-        [string]$Configuration = $DefaultConfiguration
+        [string]$Configuration = $DefaultConfiguration,
+        [parameter(Mandatory=$True, Position=0)]
+		[string]$MSBuildVersion
     )
     $testProjectsLocation = Join-Path $NuGetClientRoot test\NuGet.Clients.Tests
     $testProjects = Get-ChildItem $testProjectsLocation -Recurse -Filter '*.csproj'`
@@ -466,7 +472,7 @@ Function Test-ClientsProjects {
         | ?{ -not $_.EndsWith('WebAppTest.csproj') }
 
     foreach($testProj in $testProjects) {
-        Test-ClientProject $testProj -Configuration $Configuration
+        Test-ClientProject $testProj -Configuration $Configuration $MSBuildVersion
     }
 }
 
@@ -475,12 +481,18 @@ Function Test-ClientProject {
     param(
         [parameter(ValueFromPipeline=$True, Mandatory=$True, Position=0)]
         [string]$testProj,
-        [string]$Configuration = $DefaultConfiguration
+        [string]$Configuration = $DefaultConfiguration,
+        [parameter(Mandatory=$True, Position=1)]
+		[string]$MSBuildVersion
     )
     $opts = $testProj, "/t:RunTests", "/p:Configuration=$Configuration;RunTests=true"
     if (-not $VerbosePreference) {
         $opts += '/verbosity:minimal'
     }
+
+	$MSBuildExe = Join-Path $MSBuildRoot ($MSBuildVersion + ".0")
+	$MSBuildExe = Join-Path $MSBuildExe $MSBuildExeRelPath
+
     Trace-Log "$MSBuildExe $opts"
     & $MSBuildExe $opts
     if (-not $?) {
@@ -513,7 +525,6 @@ Function Invoke-ILMerge {
         Error-Log "Missing build artifacts listed in include list: $($notFound -join ', ')"
     }
 
-    # Note that the Dev14 path will become conditional on which target we're building against (TODO)
     Trace-Log 'Creating the ilmerged nuget.exe'
     $opts = , 'NuGet.exe'
     $opts += $buildArtifacts
