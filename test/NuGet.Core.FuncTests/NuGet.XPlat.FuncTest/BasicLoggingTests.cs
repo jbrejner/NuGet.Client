@@ -187,7 +187,7 @@ namespace NuGet.XPlat.FuncTest
             {
                 "restore",
                 "--configfile",
-                "MyNuGet.config",
+                "DoesNotExist.config",
             };
 
             // Act
@@ -196,7 +196,7 @@ namespace NuGet.XPlat.FuncTest
             // Assert
             Assert.Equal(1, exitCode);
             Assert.Equal(1, log.Errors);
-            Assert.Contains("MyNuGet.config", log.ShowErrors()); // file does not exist
+            Assert.Contains("DoesNotExist.config", log.ShowErrors()); // file does not exist
         }
 
         [Fact]

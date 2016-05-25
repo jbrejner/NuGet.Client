@@ -31,13 +31,13 @@ namespace NuGet.XPlat.FuncTest
             // Arrange
             using (var packagesDir = TestFileSystemUtility.CreateRandomTestFolder())
             using (var projectDir = TestFileSystemUtility.CreateRandomTestFolder())
-            using (var configDir = configInDifferentDirectory ? TestFileSystemUtility.CreateRandomTestFolder() : null)
+            using (var configDir = TestFileSystemUtility.CreateRandomTestFolder())
             {
                 var configFile = configInDifferentDirectory
                     ? XPlatTestUtils.CopyFuncTestConfig(configDir)
                     : XPlatTestUtils.CopyFuncTestConfig(projectDir);
 
-                var specPath = Path.Combine(projectDir, "XPlatAuthenticationTests", "project.json");
+                var specPath = Path.Combine(projectDir, "XPlatRestoreTests", "project.json");
                 var spec = XPlatTestUtils.BasicConfigNetCoreApp;
 
                 XPlatTestUtils.AddDependency(spec, "costura.fody", "1.3.3");
@@ -67,11 +67,11 @@ namespace NuGet.XPlat.FuncTest
                 int exitCode = Program.MainInternal(args.ToArray(), log);
 
                 // Assert
+                Assert.Contains($@"OK {sourceUri}/FindPackagesById()?id='fody'", log.ShowMessages());
                 Assert.Equal(string.Empty, log.ShowErrors());
                 Assert.Equal(0, exitCode);
-                Assert.Contains($@"OK {sourceUri}/FindPackagesById()?id='fody'", log.ShowMessages());
 
-                var lockFilePath = Path.Combine(projectDir, "XPlatAuthenticationTests", "project.lock.json");
+                var lockFilePath = Path.Combine(projectDir, "XPlatRestoreTests", "project.lock.json");
                 Assert.True(File.Exists(lockFilePath));
             }
         }

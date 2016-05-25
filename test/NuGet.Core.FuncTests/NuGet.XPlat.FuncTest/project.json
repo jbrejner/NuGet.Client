@@ -23,7 +23,10 @@
           "version": "1.0.0-rc2-3002339"
         }
       },
-      "compilationOptions": {
+      "buildOptions": {
+        "copyToOutput": {
+          "include": [ "xunit.runner.json" ]
+        },
         "define": [
           "IS_CORECLR"
         ]
@@ -37,7 +40,10 @@
         "System.Runtime": "",
         "System.Threading.Tasks": ""
       },
-      "compilationOptions": {
+      "buildOptions": {
+        "copyToOutput": {
+          "include": [ "xunit.runner.json" ]
+        },
         "define": [
           "IS_DESKTOP"
         ]
